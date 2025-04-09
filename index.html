@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>QuaggaJS barcode</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+        <style>
+            #camera video{
+                width: 100%;
+                max-width: 640px;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="camera" style="width: 100%;"></div>
+        <script src="https://unpkg.com/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
+
+        <script>
+            const quaggaConf = {
+                inputStream: {
+                    target: document.querySelector("#camera"),
+                    type: "LiveStream",
+                    constraints:{
+                        width: {min: 640},
+                        height: {min: 480},
+                        facingMode:"environment",
+                        aspectRatio: {min: 1, max: 2}
+                    }
+                },
+                decoder: {
+                    readers: ['ean_reader']
+                }, 
+            }
+
+            Quagga.init(quaggaConf, function (err) {
+             if (err) {
+                return console.log(err)
+             }
+             Quagga.start();   
+            });
+            
+            Quagga.onDetected(function(result) {
+                const code= result.codeResult.code
+                alert("código detectado" + code);
+                Quagga.stop();
+                const url= `https://www.googleapis.com/books/v1/volumes?q=isbn=${code}`;
+
+                fetch(url)
+                .then(response=> response.json())
+                .then(data=> {
+                    if (data.totalItems> 0){
+                        const book= data.items[0].volumeInfo;
+                        const title= book.title || "Título não encontrado";
+                        const authors= book.authors ? book.authors.join (","): "Autor Desconhecido";
+                        alert(`Livro encontrado:\nTítulo: ${title}\nAutor(es): ${authors}`);
+                    } else {
+                        alert("Livro não encontrado na API.");
+                    }
+                    Quagga.start();
+                })    
+                .catch(error=>{
+                    console.error("Erro ao buscar livro", error);
+                    alert("Erro ao buscar infomrações do livro.");
+                    Quagga.start();
+                });
+                
+            });
+        </script>
+    </body>
+</html>

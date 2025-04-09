@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Leitor de ISBN (imagem + Google Books)</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        img { max-width: 300px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h2>Enviar imagem com código de barras (ISBN / EAN)</h2>
+    <input type="file" id="upload" accept="image/*">
+    <div id="preview"></div>
+    <div id="infoLivro" style="margin-top: 20px;"></div>
+
+    <script src="https://unpkg.com/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
+    <script>
+        document.getElementById('upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function() {
+                const imageSrc = reader.result;
+                const img = document.createElement("img");
+                img.src = imageSrc;
+                const preview = document.getElementById("preview");
+                preview.innerHTML = "";
+                preview.appendChild(img);
+
+                Quagga.decodeSingle({
+                    src: imageSrc,
+                    numOfWorkers: 0,
+                    inputStream: {
+                        size: 800
+                    },
+                    decoder: {
+                        readers: ["ean_reader"]
+                    }
+                }, function(result) {
+                    if (result && result.codeResult) {
+                        const isbn = result.codeResult.code;
+                        alert("Código detectado: " + isbn);
+                        buscarLivro(isbn);
+                    } else {
+                        alert("Nenhum código detectado na imagem.");
+                    }
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function buscarLivro(isbn) {
+            const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`;
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    const info = document.getElementById("infoLivro");
+                    if (data.totalItems > 0) {
+                        const livro = data.items[0].volumeInfo;
+                        const titulo = livro.title || "Sem título";
+                        const autores = livro.authors ? livro.authors.join(", ") : "Autor desconhecido";
+
+                        info.innerHTML = `
+                            <h3>Livro encontrado:</h3>
+                            <p><strong>Título:</strong> ${titulo}</p>
+                            <p><strong>Autor(es):</strong> ${autores}</p>
+                        `;
+                    } else {
+                        info.innerHTML = "<p><strong>Livro não encontrado na API.</strong></p>";
+                    }
+                })
+                .catch(err => {
+                    console.error("Erro na API:", err);
+                    document.getElementById("infoLivro").innerHTML = "<p><strong>Erro ao buscar informações do livro.</strong></p>";
+                });
+        }
+    </script>
+</body>
+</html>
