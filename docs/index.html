@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Webcam Barcode</title>
+    <style>
+        #camera video {
+            width: 100%;
+            max-width: 640px;
+        }
+        #info {
+            margin-top: 20px;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+    
+    <h1>Escaneie o código de barras do livro</h1>
+    
+    <div id="camera">
+        <div id="scanner-guide"></div>
+    </div>
+     
+    <div id="info">
+        <p><strong>ISBN</strong> <span id="isbn">Aguardando leitura...</span></p>
+        <p><strong>Título:</strong> <span id="titulo">-</span></p>
+        <p><strong>Autor(es):</strong> <span id="autor">-</span></p>
+    </div>
+    
+    <script src="https://unpkg.com/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
+    
+    <script>
+        Quagga.init({
+    inputStream : {
+        name : "Live",
+        type : "LiveStream",
+        target: document.querySelector('#camera'),
+        constraints: {
+            width: 640,
+            height: 480,
+            facingMode: "environment"
+        }
+    },
+    decoder : {
+        readers : ["ean_reader"]
+    },
+    locator: {
+        patchSize: "medium", // aumenta a precisão: x-small, small, medium, large
+        halfSample: true
+    },
+    locate: true, // ativa localização automática
+    frequency: 10, // analisa 10 frames por segundo
+    numOfWorkers: navigator.hardwareConcurrency || 4
+}, function(err) {
+    if (err) {
+        console.log(err);
+        return;
+    }
+    console.log("Quagga foi iniciado");
+    Quagga.start();
+});
+
+  Quagga.onDetected(function(data) {
+            const code = data.codeResult.code;
+            console.log("Código detectado:", code);
+
+            document.getElementById("isbn").textContent = code;
+            Quagga.stop();
+
+            const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${code}`;
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.totalItems > 0) {
+                        const book = data.items[0].volumeInfo;
+                        document.getElementById("titulo").textContent = book.title || "Título não encontrado";
+                        document.getElementById("autor").textContent = book.authors ? book.authors.join(", ") : "Autor desconhecido";
+                    } else {
+                        document.getElementById("titulo").textContent = "Livro não encontrado";
+                        document.getElementById("autor").textContent = "-";
+                    }
+                    setTimeout(() => Quagga.start(), 3000);
+                })
+                .catch(error => {
+                    console.error("Erro na API do Google Books:", error);
+                    document.getElementById("titulo").textContent = "Erro ao buscar livro";
+                    document.getElementById("autor").textContent = "-";
+                    setTimeout(() => Quagga.start(), 3000);
+                });
+        });
+
+    </script>
+
+</body>
+</html>
