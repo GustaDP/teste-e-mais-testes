@@ -20,6 +20,8 @@
 <body>
     
     <h1>Escaneie o código de barras do livro</h1>
+
+    <div id="container" style="display: flex; flex-direction: column; align-items: center;">
     
     <div id="camera">
         <div id="scanner-guide"></div>
@@ -49,11 +51,11 @@
         readers : ["ean_reader"]
     },
     locator: {
-        patchSize: "medium", // aumenta a precisão: x-small, small, medium, large
+        patchSize: "medium",
         halfSample: true
     },
-    locate: true, // ativa localização automática
-    frequency: 10, // analisa 10 frames por segundo
+    locate: true, 
+    frequency: 10, 
     numOfWorkers: navigator.hardwareConcurrency || 4
 }, function(err) {
     if (err) {
